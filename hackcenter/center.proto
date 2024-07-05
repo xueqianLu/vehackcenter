@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+option go_package = "github.com/vehackcenter/hackcenter";
+
+package hackcenter;
+
+message Proposer {
+    string proposer = 1;
+    int32 index = 2;
+}
+
+message Block {
+    Proposer proposer = 1;
+    string hash = 2;
+    int64 height = 3;
+    int64 timestamp = 4;
+    bytes data = 5;
+}
+
+message SubmitBlockResponse {
+    string hash = 1;
+}
+
+message SubscribeBlockRequest {
+    string proposer = 1;
+}
+
+message SubBroadcastTaskRequest {
+    string proposer = 1;
+}
+
+message BeginToHackRequest {
+
+}
+
+message BeginToHackResponse {
+    int64 height = 1;
+}
+
+service CenterService {
+    rpc SubmitBlock(Block) returns (SubmitBlockResponse);
+    rpc SubscribeBlock(SubscribeBlockRequest) returns (stream Block);
+    rpc SubBroadcastTask(SubBroadcastTaskRequest) returns (stream Block);
+    rpc BeginToHack(BeginToHackRequest) returns (BeginToHackResponse);
+}
