@@ -1,14 +1,14 @@
-.PHONY: default proto hackcenter all clean docker
+.PHONY: default proto vecenter all clean docker
 
 GOBIN = $(shell pwd)/build/bin
 TAG ?= latest
 GOFILES_NOVENDOR := $(shell go list -f "{{.Dir}}" ./...)
 
-default: hackcenter
+default: vecenter
 
-all: proto hackcenter
+all: proto vecenter
 
-hackcenter:
+vecenter:
 	go build $(BUILD_FLAGS) -o=${GOBIN}/$@ -gcflags "all=-N -l" .
 	@echo "Done building."
 
@@ -20,4 +20,4 @@ clean:
 	rm -fr build/*
 
 docker:
-	docker build -t hackcenter:${TAG} .
+	docker build -t vecenter:${TAG} .
