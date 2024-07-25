@@ -39,7 +39,7 @@ func (n *Node) CommitBlock(block *pb.Block) {
 		}
 		blockTime := int64(b.Timestamp)
 		targetBlockTime := nextNBlockTime(blockTime, int64(n.conf.HackerCount-int(b.Proposer.Index)))
-		next := targetBlockTime - 5 // 出块者会提前5秒开始出块，在这里提前5秒广播
+		next := targetBlockTime // 出块者会提前5秒开始出块，在这里提前5秒广播
 		if b.Height < int64(n.conf.BeginToHack) {
 			next = 1
 		} else {
