@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	pb "github.com/xueqianLu/vehackcenter/hackcenter"
+	"strings"
 )
 
 type centerService struct {
@@ -35,7 +36,7 @@ func (s *centerService) SubBroadcastTask(in *pb.SubBroadcastTaskRequest, stream 
 }
 
 func (s *centerService) SubscribeBlock(in *pb.SubscribeBlockRequest, stream pb.CenterService_SubscribeBlockServer) error {
-	myself := in.Proposer
+	myself := strings.ToLower(in.Proposer)
 	ch := make(chan NewMinedBlockEvent)
 	sub := s.node.SubscribeNewMinedBlock(ch)
 	defer sub.Unsubscribe()
@@ -48,7 +49,7 @@ func (s *centerService) SubscribeBlock(in *pb.SubscribeBlockRequest, stream pb.C
 
 		case event := <-ch:
 			block := event.Block
-			if block.Proposer.Proposer != myself {
+			if strings.ToLower(block.Proposer.Proposer) != myself {
 				if err := stream.Send(block); err != nil {
 					return err
 				}
