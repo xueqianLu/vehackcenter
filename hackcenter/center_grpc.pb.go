@@ -26,6 +26,8 @@ type CenterServiceClient interface {
 	SubscribeBlock(ctx context.Context, in *SubscribeBlockRequest, opts ...grpc.CallOption) (CenterService_SubscribeBlockClient, error)
 	SubBroadcastTask(ctx context.Context, in *SubBroadcastTaskRequest, opts ...grpc.CallOption) (CenterService_SubBroadcastTaskClient, error)
 	BeginToHack(ctx context.Context, in *BeginToHackRequest, opts ...grpc.CallOption) (*BeginToHackResponse, error)
+	RegisterNode(ctx context.Context, in *NodeRegisterInfo, opts ...grpc.CallOption) (*NodeRegisterResponse, error)
+	FetchNode(ctx context.Context, in *FetchNodeRequest, opts ...grpc.CallOption) (*FetchNodeResponse, error)
 }
 
 type centerServiceClient struct {
@@ -118,6 +120,24 @@ func (c *centerServiceClient) BeginToHack(ctx context.Context, in *BeginToHackRe
 	return out, nil
 }
 
+func (c *centerServiceClient) RegisterNode(ctx context.Context, in *NodeRegisterInfo, opts ...grpc.CallOption) (*NodeRegisterResponse, error) {
+	out := new(NodeRegisterResponse)
+	err := c.cc.Invoke(ctx, "/hackcenter.CenterService/RegisterNode", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *centerServiceClient) FetchNode(ctx context.Context, in *FetchNodeRequest, opts ...grpc.CallOption) (*FetchNodeResponse, error) {
+	out := new(FetchNodeResponse)
+	err := c.cc.Invoke(ctx, "/hackcenter.CenterService/FetchNode", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CenterServiceServer is the server API for CenterService service.
 // All implementations must embed UnimplementedCenterServiceServer
 // for forward compatibility
@@ -126,6 +146,8 @@ type CenterServiceServer interface {
 	SubscribeBlock(*SubscribeBlockRequest, CenterService_SubscribeBlockServer) error
 	SubBroadcastTask(*SubBroadcastTaskRequest, CenterService_SubBroadcastTaskServer) error
 	BeginToHack(context.Context, *BeginToHackRequest) (*BeginToHackResponse, error)
+	RegisterNode(context.Context, *NodeRegisterInfo) (*NodeRegisterResponse, error)
+	FetchNode(context.Context, *FetchNodeRequest) (*FetchNodeResponse, error)
 	mustEmbedUnimplementedCenterServiceServer()
 }
 
@@ -144,6 +166,12 @@ func (UnimplementedCenterServiceServer) SubBroadcastTask(*SubBroadcastTaskReques
 }
 func (UnimplementedCenterServiceServer) BeginToHack(context.Context, *BeginToHackRequest) (*BeginToHackResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BeginToHack not implemented")
+}
+func (UnimplementedCenterServiceServer) RegisterNode(context.Context, *NodeRegisterInfo) (*NodeRegisterResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegisterNode not implemented")
+}
+func (UnimplementedCenterServiceServer) FetchNode(context.Context, *FetchNodeRequest) (*FetchNodeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FetchNode not implemented")
 }
 func (UnimplementedCenterServiceServer) mustEmbedUnimplementedCenterServiceServer() {}
 
@@ -236,6 +264,42 @@ func _CenterService_BeginToHack_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CenterService_RegisterNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NodeRegisterInfo)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CenterServiceServer).RegisterNode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/hackcenter.CenterService/RegisterNode",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CenterServiceServer).RegisterNode(ctx, req.(*NodeRegisterInfo))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CenterService_FetchNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FetchNodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CenterServiceServer).FetchNode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/hackcenter.CenterService/FetchNode",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CenterServiceServer).FetchNode(ctx, req.(*FetchNodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CenterService_ServiceDesc is the grpc.ServiceDesc for CenterService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -250,6 +314,14 @@ var CenterService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BeginToHack",
 			Handler:    _CenterService_BeginToHack_Handler,
+		},
+		{
+			MethodName: "RegisterNode",
+			Handler:    _CenterService_RegisterNode_Handler,
+		},
+		{
+			MethodName: "FetchNode",
+			Handler:    _CenterService_FetchNode_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

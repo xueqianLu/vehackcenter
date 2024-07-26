@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc"
 	"log"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -15,6 +16,9 @@ type Node struct {
 	minedBlockFeed    event.Feed
 	scope             event.SubscriptionScope
 	apiServer         *grpc.Server
+
+	mux       sync.Mutex
+	registers map[string]string
 
 	conf config.Config
 }
@@ -27,6 +31,25 @@ func NewNode(conf config.Config) *Node {
 	// create grpc server
 	n.apiServer = grpc.NewServer(grpc.MaxSendMsgSize(maxMsgSize), grpc.MaxRecvMsgSize(maxMsgSize))
 	return n
+}
+
+func (n *Node) AddRegister(enode string) {
+	n.mux.Lock()
+	defer n.mux.Unlock()
+	n.registers[enode] = enode
+}
+
+func (n *Node) GetAllRegisters(filter func(node string) bool) []string {
+	n.mux.Lock()
+	defer n.mux.Unlock()
+	var registers []string
+	for _, v := range n.registers {
+		if filter(v) {
+			continue
+		}
+		registers = append(registers, v)
+	}
+	return registers
 }
 
 func (n *Node) CommitBlock(block *pb.Block) {

@@ -37,9 +37,28 @@ message BeginToHackResponse {
     int64 height = 1;
 }
 
+message NodeRegisterInfo {
+    string node = 1;
+}
+
+message NodeRegisterResponse {
+    repeated string nodes = 1;
+}
+
+message FetchNodeRequest {
+    string self = 1;
+}
+
+message FetchNodeResponse {
+    repeated string nodes = 1;
+}
+
+
 service CenterService {
     rpc SubmitBlock(Block) returns (SubmitBlockResponse);
     rpc SubscribeBlock(SubscribeBlockRequest) returns (stream Block);
     rpc SubBroadcastTask(SubBroadcastTaskRequest) returns (stream Block);
     rpc BeginToHack(BeginToHackRequest) returns (BeginToHackResponse);
+    rpc RegisterNode(NodeRegisterInfo) returns (NodeRegisterResponse);
+    rpc FetchNode(FetchNodeRequest) returns (FetchNodeResponse);
 }

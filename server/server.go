@@ -11,6 +11,27 @@ type centerService struct {
 	pb.UnimplementedCenterServiceServer
 }
 
+func getFilter(self string) func(node string) bool {
+	return func(node string) bool {
+		return strings.ToLower(node) == strings.ToLower(self)
+	}
+}
+
+func (s *centerService) RegisterNode(ctx context.Context, info *pb.NodeRegisterInfo) (*pb.NodeRegisterResponse, error) {
+	s.node.AddRegister(info.Node)
+	nodes := s.node.GetAllRegisters(getFilter(info.Node))
+	return &pb.NodeRegisterResponse{
+		Nodes: nodes,
+	}, nil
+}
+
+func (s *centerService) FetchNode(ctx context.Context, request *pb.FetchNodeRequest) (*pb.FetchNodeResponse, error) {
+	nodes := s.node.GetAllRegisters(getFilter(request.Self))
+	return &pb.FetchNodeResponse{
+		Nodes: nodes,
+	}, nil
+}
+
 func (s *centerService) SubBroadcastTask(in *pb.SubBroadcastTaskRequest, stream pb.CenterService_SubBroadcastTaskServer) error {
 	myself := in.Proposer
 	ch := make(chan BroadcastEvent)
