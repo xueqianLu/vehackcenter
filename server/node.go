@@ -32,13 +32,13 @@ func NewNode(conf config.Config) *Node {
 func (n *Node) CommitBlock(block *pb.Block) {
 	// 1. send block to all subscribed hackers.
 	n.minedBlockFeed.Send(NewMinedBlockEvent{Block: block})
+	T := int64(10)
 
 	go func(b *pb.Block) {
-		nextNBlockTime := func(curBlockTime int64, nextCount int64) int64 {
-			return curBlockTime + int64(10)*nextCount
-		}
 		blockTime := int64(b.Timestamp)
-		targetBlockTime := nextNBlockTime(blockTime, int64(n.conf.HackerCount-int(b.Proposer.Index)))
+		begin := blockTime - T*int64(b.Proposer.Index)
+		end := begin + (2*int64(n.conf.HackerCount)-1)*T
+		targetBlockTime := end
 		next := targetBlockTime // 出块者会提前5秒开始出块，在这里提前5秒广播
 		if b.Height < int64(n.conf.BeginToHack) {
 			next = 1
@@ -46,15 +46,6 @@ func (n *Node) CommitBlock(block *pb.Block) {
 			time.Sleep(time.Duration(next-time.Now().Unix()) * time.Second)
 		}
 
-		for {
-			// broad cast before next block 500ms.
-			now := time.Now().UnixMilli()
-			if now >= (int64(next)*1000 + 300) {
-				break
-			} else {
-				time.Sleep(time.Millisecond * 100)
-			}
-		}
 		log.Printf("time to release block %d, by proposer %s\n", b.Height, b.Proposer.Proposer)
 
 		// 3. then send BroadcastTask to proposer
