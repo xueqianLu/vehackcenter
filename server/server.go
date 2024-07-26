@@ -87,6 +87,12 @@ func (s *centerService) SubmitBlock(ctx context.Context, in *pb.Block) (*pb.Subm
 	}, nil
 }
 
+func (s *centerService) Vote(ctx context.Context, in *pb.Empty) (*pb.VoteValue, error) {
+	return &pb.VoteValue{
+		Vote: int32(s.node.conf.Vote),
+	}, nil
+}
+
 // newCenterServiceServer creates a new CenterServiceServer.
 func newCenterServiceServer(node *Node) pb.CenterServiceServer {
 	return &centerService{node: node}

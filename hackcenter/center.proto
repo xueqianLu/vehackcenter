@@ -53,6 +53,12 @@ message FetchNodeResponse {
     repeated string nodes = 1;
 }
 
+message Empty {}
+
+message VoteValue {
+    int32 vote = 1;
+}
+
 
 service CenterService {
     rpc SubmitBlock(Block) returns (SubmitBlockResponse);
@@ -61,4 +67,5 @@ service CenterService {
     rpc BeginToHack(BeginToHackRequest) returns (BeginToHackResponse);
     rpc RegisterNode(NodeRegisterInfo) returns (NodeRegisterResponse);
     rpc FetchNode(FetchNodeRequest) returns (FetchNodeResponse);
+    rpc Vote(Empty) returns (VoteValue);
 }

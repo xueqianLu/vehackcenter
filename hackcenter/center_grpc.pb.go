@@ -28,6 +28,7 @@ type CenterServiceClient interface {
 	BeginToHack(ctx context.Context, in *BeginToHackRequest, opts ...grpc.CallOption) (*BeginToHackResponse, error)
 	RegisterNode(ctx context.Context, in *NodeRegisterInfo, opts ...grpc.CallOption) (*NodeRegisterResponse, error)
 	FetchNode(ctx context.Context, in *FetchNodeRequest, opts ...grpc.CallOption) (*FetchNodeResponse, error)
+	Vote(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*VoteValue, error)
 }
 
 type centerServiceClient struct {
@@ -138,6 +139,15 @@ func (c *centerServiceClient) FetchNode(ctx context.Context, in *FetchNodeReques
 	return out, nil
 }
 
+func (c *centerServiceClient) Vote(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*VoteValue, error) {
+	out := new(VoteValue)
+	err := c.cc.Invoke(ctx, "/hackcenter.CenterService/Vote", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CenterServiceServer is the server API for CenterService service.
 // All implementations must embed UnimplementedCenterServiceServer
 // for forward compatibility
@@ -148,6 +158,7 @@ type CenterServiceServer interface {
 	BeginToHack(context.Context, *BeginToHackRequest) (*BeginToHackResponse, error)
 	RegisterNode(context.Context, *NodeRegisterInfo) (*NodeRegisterResponse, error)
 	FetchNode(context.Context, *FetchNodeRequest) (*FetchNodeResponse, error)
+	Vote(context.Context, *Empty) (*VoteValue, error)
 	mustEmbedUnimplementedCenterServiceServer()
 }
 
@@ -172,6 +183,9 @@ func (UnimplementedCenterServiceServer) RegisterNode(context.Context, *NodeRegis
 }
 func (UnimplementedCenterServiceServer) FetchNode(context.Context, *FetchNodeRequest) (*FetchNodeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchNode not implemented")
+}
+func (UnimplementedCenterServiceServer) Vote(context.Context, *Empty) (*VoteValue, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Vote not implemented")
 }
 func (UnimplementedCenterServiceServer) mustEmbedUnimplementedCenterServiceServer() {}
 
@@ -300,6 +314,24 @@ func _CenterService_FetchNode_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CenterService_Vote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CenterServiceServer).Vote(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/hackcenter.CenterService/Vote",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CenterServiceServer).Vote(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CenterService_ServiceDesc is the grpc.ServiceDesc for CenterService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -322,6 +354,10 @@ var CenterService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "FetchNode",
 			Handler:    _CenterService_FetchNode_Handler,
+		},
+		{
+			MethodName: "Vote",
+			Handler:    _CenterService_Vote_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
