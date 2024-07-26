@@ -25,7 +25,8 @@ type Node struct {
 
 func NewNode(conf config.Config) *Node {
 	n := &Node{
-		conf: conf,
+		conf:      conf,
+		registers: make(map[string]string),
 	}
 	maxMsgSize := 20 * 1024 * 1024
 	// create grpc server
