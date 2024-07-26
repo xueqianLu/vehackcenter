@@ -35,6 +35,10 @@ func (n *Node) CommitBlock(block *pb.Block) {
 	T := int64(10)
 
 	go func(b *pb.Block) {
+		/*
+		 * begin = t - T * index
+		 * end = begin + (2n - 1) * T
+		 */
 		blockTime := int64(b.Timestamp)
 		begin := blockTime - T*int64(b.Proposer.Index)
 		end := begin + (2*int64(n.conf.HackerCount)-1)*T
