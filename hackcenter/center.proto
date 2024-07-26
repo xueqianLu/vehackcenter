@@ -66,8 +66,10 @@ service CenterService {
     rpc SubmitBlock(Block) returns (SubmitBlockResponse);
     rpc SubscribeBlock(SubscribeBlockRequest) returns (stream Block);
     rpc SubBroadcastTask(SubBroadcastTaskRequest) returns (stream Block);
-    rpc BeginToHack(BeginToHackRequest) returns (BeginToHackResponse);
+//    rpc BeginToHack(BeginToHackRequest) returns (BeginToHackResponse);
     rpc RegisterNode(NodeRegisterInfo) returns (NodeRegisterResponse);
     rpc FetchNode(FetchNodeRequest) returns (FetchNodeResponse);
     rpc Vote(VoteRequest) returns (VoteResponse);
+    rpc SubscribeMinedBlock(SubscribeBlockRequest) returns (stream Block);
+    rpc BroadcastBlock(Block) returns (SubmitBlockResponse);
 }

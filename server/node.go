@@ -14,6 +14,7 @@ import (
 type Node struct {
 	broadcastTaskFeed event.Feed
 	minedBlockFeed    event.Feed
+	newBlockFeed      event.Feed
 	scope             event.SubscriptionScope
 	apiServer         *grpc.Server
 
@@ -82,8 +83,17 @@ func (n *Node) CommitBlock(block *pb.Block) {
 
 }
 
+func (n *Node) BroadcastBlock(block *pb.Block) {
+	// 1. send block to all subscribed node.
+	n.newBlockFeed.Send(NewBlockEvent{Block: block})
+}
+
 func (n *Node) SubscribeNewMinedBlock(ch chan<- NewMinedBlockEvent) event.Subscription {
 	return n.scope.Track(n.minedBlockFeed.Subscribe(ch))
+}
+
+func (n *Node) SubscribeNewBlock(ch chan<- NewBlockEvent) event.Subscription {
+	return n.scope.Track(n.newBlockFeed.Subscribe(ch))
 }
 
 func (n *Node) SubscribeBroadcastTask(ch chan<- BroadcastEvent) event.Subscription {

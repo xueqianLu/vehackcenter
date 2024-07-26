@@ -58,6 +58,30 @@ func (s *centerService) SubBroadcastTask(in *pb.SubBroadcastTaskRequest, stream 
 
 func (s *centerService) SubscribeBlock(in *pb.SubscribeBlockRequest, stream pb.CenterService_SubscribeBlockServer) error {
 	myself := strings.ToLower(in.Proposer)
+	ch := make(chan NewBlockEvent)
+	sub := s.node.SubscribeNewBlock(ch)
+	defer sub.Unsubscribe()
+
+	run := true
+	for run {
+		select {
+		case <-stream.Context().Done():
+			run = false
+
+		case event := <-ch:
+			block := event.Block
+			if strings.ToLower(block.Proposer.Proposer) != myself {
+				if err := stream.Send(block); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (s *centerService) SubscribeMinedBlock(in *pb.SubscribeBlockRequest, stream pb.CenterService_SubscribeMinedBlockServer) error {
+	myself := strings.ToLower(in.Proposer)
 	ch := make(chan NewMinedBlockEvent)
 	sub := s.node.SubscribeNewMinedBlock(ch)
 	defer sub.Unsubscribe()
@@ -78,6 +102,13 @@ func (s *centerService) SubscribeBlock(in *pb.SubscribeBlockRequest, stream pb.C
 		}
 	}
 	return nil
+}
+
+func (s *centerService) BroadcastBlock(ctx context.Context, block *pb.Block) (*pb.SubmitBlockResponse, error) {
+	s.node.BroadcastBlock(block)
+	return &pb.SubmitBlockResponse{
+		Hash: block.Hash,
+	}, nil
 }
 
 func (s *centerService) SubmitBlock(ctx context.Context, in *pb.Block) (*pb.SubmitBlockResponse, error) {

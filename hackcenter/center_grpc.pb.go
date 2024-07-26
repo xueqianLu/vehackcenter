@@ -25,10 +25,12 @@ type CenterServiceClient interface {
 	SubmitBlock(ctx context.Context, in *Block, opts ...grpc.CallOption) (*SubmitBlockResponse, error)
 	SubscribeBlock(ctx context.Context, in *SubscribeBlockRequest, opts ...grpc.CallOption) (CenterService_SubscribeBlockClient, error)
 	SubBroadcastTask(ctx context.Context, in *SubBroadcastTaskRequest, opts ...grpc.CallOption) (CenterService_SubBroadcastTaskClient, error)
-	BeginToHack(ctx context.Context, in *BeginToHackRequest, opts ...grpc.CallOption) (*BeginToHackResponse, error)
+	//    rpc BeginToHack(BeginToHackRequest) returns (BeginToHackResponse);
 	RegisterNode(ctx context.Context, in *NodeRegisterInfo, opts ...grpc.CallOption) (*NodeRegisterResponse, error)
 	FetchNode(ctx context.Context, in *FetchNodeRequest, opts ...grpc.CallOption) (*FetchNodeResponse, error)
 	Vote(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*VoteResponse, error)
+	SubscribeMinedBlock(ctx context.Context, in *SubscribeBlockRequest, opts ...grpc.CallOption) (CenterService_SubscribeMinedBlockClient, error)
+	BroadcastBlock(ctx context.Context, in *Block, opts ...grpc.CallOption) (*SubmitBlockResponse, error)
 }
 
 type centerServiceClient struct {
@@ -112,15 +114,6 @@ func (x *centerServiceSubBroadcastTaskClient) Recv() (*Block, error) {
 	return m, nil
 }
 
-func (c *centerServiceClient) BeginToHack(ctx context.Context, in *BeginToHackRequest, opts ...grpc.CallOption) (*BeginToHackResponse, error) {
-	out := new(BeginToHackResponse)
-	err := c.cc.Invoke(ctx, "/hackcenter.CenterService/BeginToHack", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *centerServiceClient) RegisterNode(ctx context.Context, in *NodeRegisterInfo, opts ...grpc.CallOption) (*NodeRegisterResponse, error) {
 	out := new(NodeRegisterResponse)
 	err := c.cc.Invoke(ctx, "/hackcenter.CenterService/RegisterNode", in, out, opts...)
@@ -148,6 +141,47 @@ func (c *centerServiceClient) Vote(ctx context.Context, in *VoteRequest, opts ..
 	return out, nil
 }
 
+func (c *centerServiceClient) SubscribeMinedBlock(ctx context.Context, in *SubscribeBlockRequest, opts ...grpc.CallOption) (CenterService_SubscribeMinedBlockClient, error) {
+	stream, err := c.cc.NewStream(ctx, &CenterService_ServiceDesc.Streams[2], "/hackcenter.CenterService/SubscribeMinedBlock", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &centerServiceSubscribeMinedBlockClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type CenterService_SubscribeMinedBlockClient interface {
+	Recv() (*Block, error)
+	grpc.ClientStream
+}
+
+type centerServiceSubscribeMinedBlockClient struct {
+	grpc.ClientStream
+}
+
+func (x *centerServiceSubscribeMinedBlockClient) Recv() (*Block, error) {
+	m := new(Block)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *centerServiceClient) BroadcastBlock(ctx context.Context, in *Block, opts ...grpc.CallOption) (*SubmitBlockResponse, error) {
+	out := new(SubmitBlockResponse)
+	err := c.cc.Invoke(ctx, "/hackcenter.CenterService/BroadcastBlock", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CenterServiceServer is the server API for CenterService service.
 // All implementations must embed UnimplementedCenterServiceServer
 // for forward compatibility
@@ -155,10 +189,12 @@ type CenterServiceServer interface {
 	SubmitBlock(context.Context, *Block) (*SubmitBlockResponse, error)
 	SubscribeBlock(*SubscribeBlockRequest, CenterService_SubscribeBlockServer) error
 	SubBroadcastTask(*SubBroadcastTaskRequest, CenterService_SubBroadcastTaskServer) error
-	BeginToHack(context.Context, *BeginToHackRequest) (*BeginToHackResponse, error)
+	//    rpc BeginToHack(BeginToHackRequest) returns (BeginToHackResponse);
 	RegisterNode(context.Context, *NodeRegisterInfo) (*NodeRegisterResponse, error)
 	FetchNode(context.Context, *FetchNodeRequest) (*FetchNodeResponse, error)
 	Vote(context.Context, *VoteRequest) (*VoteResponse, error)
+	SubscribeMinedBlock(*SubscribeBlockRequest, CenterService_SubscribeMinedBlockServer) error
+	BroadcastBlock(context.Context, *Block) (*SubmitBlockResponse, error)
 	mustEmbedUnimplementedCenterServiceServer()
 }
 
@@ -175,9 +211,6 @@ func (UnimplementedCenterServiceServer) SubscribeBlock(*SubscribeBlockRequest, C
 func (UnimplementedCenterServiceServer) SubBroadcastTask(*SubBroadcastTaskRequest, CenterService_SubBroadcastTaskServer) error {
 	return status.Errorf(codes.Unimplemented, "method SubBroadcastTask not implemented")
 }
-func (UnimplementedCenterServiceServer) BeginToHack(context.Context, *BeginToHackRequest) (*BeginToHackResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method BeginToHack not implemented")
-}
 func (UnimplementedCenterServiceServer) RegisterNode(context.Context, *NodeRegisterInfo) (*NodeRegisterResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterNode not implemented")
 }
@@ -186,6 +219,12 @@ func (UnimplementedCenterServiceServer) FetchNode(context.Context, *FetchNodeReq
 }
 func (UnimplementedCenterServiceServer) Vote(context.Context, *VoteRequest) (*VoteResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Vote not implemented")
+}
+func (UnimplementedCenterServiceServer) SubscribeMinedBlock(*SubscribeBlockRequest, CenterService_SubscribeMinedBlockServer) error {
+	return status.Errorf(codes.Unimplemented, "method SubscribeMinedBlock not implemented")
+}
+func (UnimplementedCenterServiceServer) BroadcastBlock(context.Context, *Block) (*SubmitBlockResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BroadcastBlock not implemented")
 }
 func (UnimplementedCenterServiceServer) mustEmbedUnimplementedCenterServiceServer() {}
 
@@ -260,24 +299,6 @@ func (x *centerServiceSubBroadcastTaskServer) Send(m *Block) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _CenterService_BeginToHack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(BeginToHackRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CenterServiceServer).BeginToHack(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/hackcenter.CenterService/BeginToHack",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CenterServiceServer).BeginToHack(ctx, req.(*BeginToHackRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _CenterService_RegisterNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(NodeRegisterInfo)
 	if err := dec(in); err != nil {
@@ -332,6 +353,45 @@ func _CenterService_Vote_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CenterService_SubscribeMinedBlock_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SubscribeBlockRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(CenterServiceServer).SubscribeMinedBlock(m, &centerServiceSubscribeMinedBlockServer{stream})
+}
+
+type CenterService_SubscribeMinedBlockServer interface {
+	Send(*Block) error
+	grpc.ServerStream
+}
+
+type centerServiceSubscribeMinedBlockServer struct {
+	grpc.ServerStream
+}
+
+func (x *centerServiceSubscribeMinedBlockServer) Send(m *Block) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _CenterService_BroadcastBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Block)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CenterServiceServer).BroadcastBlock(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/hackcenter.CenterService/BroadcastBlock",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CenterServiceServer).BroadcastBlock(ctx, req.(*Block))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CenterService_ServiceDesc is the grpc.ServiceDesc for CenterService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -342,10 +402,6 @@ var CenterService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SubmitBlock",
 			Handler:    _CenterService_SubmitBlock_Handler,
-		},
-		{
-			MethodName: "BeginToHack",
-			Handler:    _CenterService_BeginToHack_Handler,
 		},
 		{
 			MethodName: "RegisterNode",
@@ -359,6 +415,10 @@ var CenterService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "Vote",
 			Handler:    _CenterService_Vote_Handler,
 		},
+		{
+			MethodName: "BroadcastBlock",
+			Handler:    _CenterService_BroadcastBlock_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -369,6 +429,11 @@ var CenterService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "SubBroadcastTask",
 			Handler:       _CenterService_SubBroadcastTask_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "SubscribeMinedBlock",
+			Handler:       _CenterService_SubscribeMinedBlock_Handler,
 			ServerStreams: true,
 		},
 	},
