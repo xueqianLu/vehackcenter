@@ -54,8 +54,10 @@ message FetchNodeResponse {
 }
 
 message Empty {}
-
-message VoteValue {
+message VoteRequest {
+    int64 block = 1;
+}
+message VoteResponse {
     int32 vote = 1;
 }
 
@@ -67,5 +69,5 @@ service CenterService {
     rpc BeginToHack(BeginToHackRequest) returns (BeginToHackResponse);
     rpc RegisterNode(NodeRegisterInfo) returns (NodeRegisterResponse);
     rpc FetchNode(FetchNodeRequest) returns (FetchNodeResponse);
-    rpc Vote(Empty) returns (VoteValue);
+    rpc Vote(VoteRequest) returns (VoteResponse);
 }

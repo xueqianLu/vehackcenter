@@ -87,9 +87,13 @@ func (s *centerService) SubmitBlock(ctx context.Context, in *pb.Block) (*pb.Subm
 	}, nil
 }
 
-func (s *centerService) Vote(ctx context.Context, in *pb.Empty) (*pb.VoteValue, error) {
-	return &pb.VoteValue{
-		Vote: int32(s.node.conf.Vote),
+func (s *centerService) Vote(ctx context.Context, in *pb.VoteRequest) (*pb.VoteResponse, error) {
+	value := s.node.conf.Vote
+	if in.Block < int64(s.node.conf.BeginToHack) {
+		value = 1
+	}
+	return &pb.VoteResponse{
+		Vote: int32(value),
 	}, nil
 }
 
