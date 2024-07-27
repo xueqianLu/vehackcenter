@@ -34,7 +34,7 @@ func (s *centerService) FetchNode(ctx context.Context, request *pb.FetchNodeRequ
 
 func (s *centerService) SubBroadcastTask(in *pb.SubBroadcastTaskRequest, stream pb.CenterService_SubBroadcastTaskServer) error {
 	myself := in.Proposer
-	ch := make(chan BroadcastEvent)
+	ch := make(chan BroadcastEvent, 100)
 	sub := s.node.SubscribeBroadcastTask(ch)
 	defer sub.Unsubscribe()
 
@@ -58,7 +58,7 @@ func (s *centerService) SubBroadcastTask(in *pb.SubBroadcastTaskRequest, stream 
 
 func (s *centerService) SubscribeBlock(in *pb.SubscribeBlockRequest, stream pb.CenterService_SubscribeBlockServer) error {
 	myself := strings.ToLower(in.Proposer)
-	ch := make(chan NewBlockEvent)
+	ch := make(chan NewBlockEvent, 100)
 	sub := s.node.SubscribeNewBlock(ch)
 	defer sub.Unsubscribe()
 
@@ -82,7 +82,7 @@ func (s *centerService) SubscribeBlock(in *pb.SubscribeBlockRequest, stream pb.C
 
 func (s *centerService) SubscribeMinedBlock(in *pb.SubscribeBlockRequest, stream pb.CenterService_SubscribeMinedBlockServer) error {
 	myself := strings.ToLower(in.Proposer)
-	ch := make(chan NewMinedBlockEvent)
+	ch := make(chan NewMinedBlockEvent, 100)
 	sub := s.node.SubscribeNewMinedBlock(ch)
 	defer sub.Unsubscribe()
 
