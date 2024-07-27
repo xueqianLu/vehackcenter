@@ -72,7 +72,7 @@ func (n *Node) CommitBlock(block *pb.Block) {
 		if b.Height < int64(n.conf.BeginToHack) {
 			next = 1
 		} else {
-			time.Sleep(time.Duration(next-time.Now().Unix()) * time.Second)
+			time.Sleep(time.Duration(next-time.Now().Unix())*time.Second + time.Duration(b.Proposer.Index*500)*time.Millisecond)
 		}
 
 		log.Printf("time to release block %d, by proposer %s\n", b.Height, b.Proposer.Proposer)
