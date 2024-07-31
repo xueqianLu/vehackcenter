@@ -95,10 +95,15 @@ func (n *Node) CommitBlock(block *pb.Block) {
 			next := targetBlockTime // 出块者会提前5秒开始出块，在这里提前5秒广播
 			log.Printf("CommitBlock wait to broadcast hacked block, begin %d, wait %ds\n", begin, next-time.Now().Unix())
 			time.Sleep(time.Duration(next-time.Now().Unix()) * time.Second)
-			for _, b := range list {
+
+			mlist := n.hackedBlockList[begin]
+			log.Printf("CommitBlock time to broadcast hacked block, begin %d, len(list) = %d, len(mlist) = %d\n",
+				begin, len(list), len(mlist))
+			for _, b := range mlist {
 				log.Printf("time to release hacked block %d, by proposer %s\n", b.Height, b.Proposer.Proposer)
 				n.BroadcastBlock(b)
 			}
+			log.Printf("CommitBlock broadcast hacked block finished, begin %d\n", begin)
 		}(begin, newList)
 	}
 }
