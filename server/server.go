@@ -33,26 +33,27 @@ func (s *centerService) FetchNode(ctx context.Context, request *pb.FetchNodeRequ
 }
 
 func (s *centerService) SubBroadcastTask(in *pb.SubBroadcastTaskRequest, stream pb.CenterService_SubBroadcastTaskServer) error {
-	myself := in.Proposer
-	ch := make(chan BroadcastEvent, 100)
-	sub := s.node.SubscribeBroadcastTask(ch)
-	defer sub.Unsubscribe()
 
-	run := true
-	for run {
-		select {
-		case <-stream.Context().Done():
-			run = false
-
-		case event := <-ch:
-			block := event.Block
-			if block.Proposer.Proposer == myself {
-				if err := stream.Send(block); err != nil {
-					return err
-				}
-			}
-		}
-	}
+	//myself := in.Proposer
+	//ch := make(chan BroadcastEvent, 100)
+	//sub := s.node.SubscribeBroadcastTask(ch)
+	//defer sub.Unsubscribe()
+	//
+	//run := true
+	//for run {
+	//	select {
+	//	case <-stream.Context().Done():
+	//		run = false
+	//
+	//	case event := <-ch:
+	//		block := event.Block
+	//		if block.Proposer.Proposer == myself {
+	//			if err := stream.Send(block); err != nil {
+	//				return err
+	//			}
+	//		}
+	//	}
+	//}
 	return nil
 }
 

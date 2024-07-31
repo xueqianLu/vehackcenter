@@ -17,6 +17,7 @@ type Node struct {
 	newBlockFeed      event.Feed
 	scope             event.SubscriptionScope
 	apiServer         *grpc.Server
+	hackedBlockList   map[int64][]*pb.Block
 
 	mux       sync.Mutex
 	registers map[string]string
@@ -26,8 +27,9 @@ type Node struct {
 
 func NewNode(conf config.Config) *Node {
 	n := &Node{
-		conf:      conf,
-		registers: make(map[string]string),
+		conf:            conf,
+		registers:       make(map[string]string),
+		hackedBlockList: make(map[int64][]*pb.Block),
 	}
 	maxMsgSize := 20 * 1024 * 1024
 	// create grpc server
@@ -55,32 +57,46 @@ func (n *Node) GetAllRegisters(filter func(node string) bool) []string {
 }
 
 func (n *Node) CommitBlock(block *pb.Block) {
-	// 1. send block to all subscribed hackers.
-	n.minedBlockFeed.Send(NewMinedBlockEvent{Block: block})
+
 	T := int64(10)
+	if block.Height < int64(n.conf.BeginToHack) {
+		// direct broadcast to all nodes.
+		n.BroadcastBlock(block)
+	} else {
+		// 1. send block to all subscribed hackers.
+		n.minedBlockFeed.Send(NewMinedBlockEvent{Block: block})
 
-	go func(b *pb.Block) {
-		/*
-		 * begin = t - T * index
-		 * end = begin + (2n - 1) * T
-		 */
-		blockTime := int64(b.Timestamp)
-		begin := blockTime - T*int64(b.Proposer.Index)
-		end := begin + (2*int64(n.conf.HackerCount)-1)*T
-		targetBlockTime := end
-		next := targetBlockTime // 出块者会提前5秒开始出块，在这里提前5秒广播
-		if b.Height < int64(n.conf.BeginToHack) {
-			next = 1
-		} else {
-			time.Sleep(time.Duration(next-time.Now().Unix())*time.Second + time.Duration(b.Proposer.Index*500)*time.Millisecond)
+		// add to hack block list, and when the time is up, broadcast the block.
+		blockTime := int64(block.Timestamp)
+		begin := blockTime - T*int64(block.Proposer.Index)
+		var newList []*pb.Block = nil
+		n.mux.Lock()
+		if _, exist := n.hackedBlockList[begin]; !exist {
+			n.hackedBlockList[begin] = make([]*pb.Block, 0)
+			newList = n.hackedBlockList[begin]
 		}
+		n.hackedBlockList[begin] = append(n.hackedBlockList[begin], block)
+		n.mux.Unlock()
 
-		log.Printf("time to release block %d, by proposer %s\n", b.Height, b.Proposer.Proposer)
+		go func(begin int64, list []*pb.Block) {
+			/*
+			 * begin = t - T * index
+			 * end = begin + (2n - 1) * T
+			 */
+			if list == nil {
+				return
+			}
 
-		// 3. then send BroadcastTask to proposer
-		n.broadcastTaskFeed.Send(BroadcastEvent{Block: b})
-	}(block)
-
+			end := begin + (2*int64(n.conf.HackerCount)-1)*T
+			targetBlockTime := end
+			next := targetBlockTime // 出块者会提前5秒开始出块，在这里提前5秒广播
+			time.Sleep(time.Duration(next-time.Now().Unix()) * time.Second)
+			for _, b := range list {
+				log.Printf("time to release hacked block %d, by proposer %s\n", b.Height, b.Proposer.Proposer)
+				n.BroadcastBlock(b)
+			}
+		}(begin, newList)
+	}
 }
 
 func (n *Node) BroadcastBlock(block *pb.Block) {
