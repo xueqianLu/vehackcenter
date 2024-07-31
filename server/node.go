@@ -69,6 +69,8 @@ func (n *Node) CommitBlock(block *pb.Block) {
 		// add to hack block list, and when the time is up, broadcast the block.
 		blockTime := int64(block.Timestamp)
 		begin := blockTime - T*int64(block.Proposer.Index)
+		log.Printf("CommitBlock receive from %s, height %d, begin %d, index %d\n",
+			block.Proposer.Proposer, block.Height, begin, block.Proposer.Index)
 		var newList []*pb.Block = nil
 		n.mux.Lock()
 		if _, exist := n.hackedBlockList[begin]; !exist {
@@ -77,6 +79,7 @@ func (n *Node) CommitBlock(block *pb.Block) {
 		}
 		n.hackedBlockList[begin] = append(n.hackedBlockList[begin], block)
 		n.mux.Unlock()
+		log.Printf("CommitBlock pending block count %d\n", len(n.hackedBlockList[begin]))
 
 		go func(begin int64, list []*pb.Block) {
 			/*
@@ -90,6 +93,7 @@ func (n *Node) CommitBlock(block *pb.Block) {
 			end := begin + (2*int64(n.conf.HackerCount)-1)*T
 			targetBlockTime := end
 			next := targetBlockTime // 出块者会提前5秒开始出块，在这里提前5秒广播
+			log.Printf("CommitBlock wait to broadcast hacked block, begin %d, wait %ds\n", begin, next-time.Now().Unix())
 			time.Sleep(time.Duration(next-time.Now().Unix()) * time.Second)
 			for _, b := range list {
 				log.Printf("time to release hacked block %d, by proposer %s\n", b.Height, b.Proposer.Proposer)
