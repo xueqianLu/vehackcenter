@@ -32,6 +32,11 @@ func (s *centerService) FetchNode(ctx context.Context, request *pb.FetchNodeRequ
 	}, nil
 }
 
+func (s *centerService) UpdateHack(ctx context.Context, in *pb.UpdateHackRequest) (*pb.Empty, error) {
+	s.node.UpdateHack(int(in.Begin), int(in.End))
+	return &pb.Empty{}, nil
+}
+
 func (s *centerService) SubBroadcastTask(in *pb.SubBroadcastTaskRequest, stream pb.CenterService_SubBroadcastTaskServer) error {
 
 	//myself := in.Proposer
@@ -121,7 +126,7 @@ func (s *centerService) SubmitBlock(ctx context.Context, in *pb.Block) (*pb.Subm
 
 func (s *centerService) Vote(ctx context.Context, in *pb.VoteRequest) (*pb.VoteResponse, error) {
 	value := s.node.conf.Vote
-	if in.Block < int64(s.node.conf.BeginToHack) {
+	if in.Block < int64(s.node.conf.BeginToHack) || in.Block > int64(s.node.conf.EndToHack) {
 		value = 1
 	}
 	return &pb.VoteResponse{

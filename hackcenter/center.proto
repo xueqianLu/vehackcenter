@@ -62,6 +62,11 @@ message VoteResponse {
 }
 
 
+message UpdateHackRequest {
+    int64 begin = 1;
+    int64 end = 2;
+}
+
 service CenterService {
     rpc SubmitBlock(Block) returns (SubmitBlockResponse);
     rpc SubscribeBlock(SubscribeBlockRequest) returns (stream Block);
@@ -72,4 +77,5 @@ service CenterService {
     rpc Vote(VoteRequest) returns (VoteResponse);
     rpc SubscribeMinedBlock(SubscribeBlockRequest) returns (stream Block);
     rpc BroadcastBlock(Block) returns (SubmitBlockResponse);
+    rpc UpdateHack(UpdateHackRequest) returns (Empty);
 }

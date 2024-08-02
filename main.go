@@ -12,6 +12,7 @@ var (
 	hackerCount = flag.Int("c", 33, "hacker count")
 	vote        = flag.Int("vote", 1, "vote value, 1 or 0")
 	beginHeight = flag.Int("begin", 500, "the height begin to execute hack")
+	endHeight   = flag.Int("end", 100000, "the height end to execute hack")
 )
 
 func main() {
@@ -24,6 +25,7 @@ func main() {
 		Url:         url,
 		HackerCount: *hackerCount,
 		BeginToHack: *beginHeight,
+		EndToHack:   *endHeight,
 		Vote:        *vote,
 	}
 

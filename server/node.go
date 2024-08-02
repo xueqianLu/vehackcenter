@@ -59,7 +59,7 @@ func (n *Node) GetAllRegisters(filter func(node string) bool) []string {
 func (n *Node) CommitBlock(block *pb.Block) {
 
 	T := int64(10)
-	if block.Height < int64(n.conf.BeginToHack) {
+	if block.Height < int64(n.conf.BeginToHack) || block.Height > int64(n.conf.EndToHack) {
 		// direct broadcast to all nodes.
 		n.BroadcastBlock(block)
 	} else {
@@ -145,4 +145,9 @@ func (n *Node) RunServer() {
 
 func (n *Node) StopServer() {
 	n.apiServer.Stop()
+}
+
+func (n *Node) UpdateHack(begin int, end int) {
+	n.conf.BeginToHack = begin
+	n.conf.HackerCount = end
 }

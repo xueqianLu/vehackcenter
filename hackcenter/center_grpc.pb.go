@@ -31,6 +31,7 @@ type CenterServiceClient interface {
 	Vote(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*VoteResponse, error)
 	SubscribeMinedBlock(ctx context.Context, in *SubscribeBlockRequest, opts ...grpc.CallOption) (CenterService_SubscribeMinedBlockClient, error)
 	BroadcastBlock(ctx context.Context, in *Block, opts ...grpc.CallOption) (*SubmitBlockResponse, error)
+	UpdateHack(ctx context.Context, in *UpdateHackRequest, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type centerServiceClient struct {
@@ -182,6 +183,15 @@ func (c *centerServiceClient) BroadcastBlock(ctx context.Context, in *Block, opt
 	return out, nil
 }
 
+func (c *centerServiceClient) UpdateHack(ctx context.Context, in *UpdateHackRequest, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, "/hackcenter.CenterService/UpdateHack", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CenterServiceServer is the server API for CenterService service.
 // All implementations must embed UnimplementedCenterServiceServer
 // for forward compatibility
@@ -195,6 +205,7 @@ type CenterServiceServer interface {
 	Vote(context.Context, *VoteRequest) (*VoteResponse, error)
 	SubscribeMinedBlock(*SubscribeBlockRequest, CenterService_SubscribeMinedBlockServer) error
 	BroadcastBlock(context.Context, *Block) (*SubmitBlockResponse, error)
+	UpdateHack(context.Context, *UpdateHackRequest) (*Empty, error)
 	mustEmbedUnimplementedCenterServiceServer()
 }
 
@@ -225,6 +236,9 @@ func (UnimplementedCenterServiceServer) SubscribeMinedBlock(*SubscribeBlockReque
 }
 func (UnimplementedCenterServiceServer) BroadcastBlock(context.Context, *Block) (*SubmitBlockResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BroadcastBlock not implemented")
+}
+func (UnimplementedCenterServiceServer) UpdateHack(context.Context, *UpdateHackRequest) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateHack not implemented")
 }
 func (UnimplementedCenterServiceServer) mustEmbedUnimplementedCenterServiceServer() {}
 
@@ -392,6 +406,24 @@ func _CenterService_BroadcastBlock_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CenterService_UpdateHack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateHackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CenterServiceServer).UpdateHack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/hackcenter.CenterService/UpdateHack",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CenterServiceServer).UpdateHack(ctx, req.(*UpdateHackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CenterService_ServiceDesc is the grpc.ServiceDesc for CenterService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -418,6 +450,10 @@ var CenterService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BroadcastBlock",
 			Handler:    _CenterService_BroadcastBlock_Handler,
+		},
+		{
+			MethodName: "UpdateHack",
+			Handler:    _CenterService_UpdateHack_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
