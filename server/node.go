@@ -1,11 +1,11 @@
 package server
 
 import (
+	log "github.com/sirupsen/logrus"
 	"github.com/xueqianLu/vehackcenter/config"
 	"github.com/xueqianLu/vehackcenter/event"
 	pb "github.com/xueqianLu/vehackcenter/hackcenter"
 	"google.golang.org/grpc"
-	"log"
 	"net"
 	"sync"
 	"time"
@@ -31,7 +31,7 @@ func NewNode(conf config.Config) *Node {
 		registers:       make(map[string]string),
 		hackedBlockList: make(map[int64][]*pb.Block),
 	}
-	maxMsgSize := 20 * 1024 * 1024
+	maxMsgSize := 100 * 1024 * 1024
 	// create grpc server
 	n.apiServer = grpc.NewServer(grpc.MaxSendMsgSize(maxMsgSize), grpc.MaxRecvMsgSize(maxMsgSize))
 	return n
@@ -69,8 +69,13 @@ func (n *Node) CommitBlock(block *pb.Block) {
 		// add to hack block list, and when the time is up, broadcast the block.
 		blockTime := int64(block.Timestamp)
 		begin := blockTime - T*int64(block.Proposer.Index)
-		log.Printf("CommitBlock receive from %s, height %d, begin %d, index %d\n",
-			block.Proposer.Proposer, block.Height, begin, block.Proposer.Index)
+		log.WithFields(log.Fields{
+			"begin":    begin,
+			"block":    block.Height,
+			"proposer": block.Proposer.Proposer,
+			"index":    block.Proposer.Index,
+		}).Info("CommitBlock receive")
+
 		var newList []*pb.Block = nil
 		n.mux.Lock()
 		if _, exist := n.hackedBlockList[begin]; !exist {
@@ -79,7 +84,7 @@ func (n *Node) CommitBlock(block *pb.Block) {
 		}
 		n.hackedBlockList[begin] = append(n.hackedBlockList[begin], block)
 		n.mux.Unlock()
-		log.Printf("CommitBlock pending block count %d\n", len(n.hackedBlockList[begin]))
+		log.WithField("pending", len(n.hackedBlockList[begin])).Info("CommitBlock pendin block count")
 
 		go func(begin int64, list []*pb.Block) {
 			/*
@@ -93,17 +98,21 @@ func (n *Node) CommitBlock(block *pb.Block) {
 			end := begin + (2*int64(n.conf.HackerCount)-1)*T
 			targetBlockTime := end
 			next := targetBlockTime // 出块者会提前5秒开始出块，在这里提前5秒广播
-			log.Printf("CommitBlock wait to broadcast hacked block, begin %d, wait %ds\n", begin, next-time.Now().Unix())
+			log.WithFields(log.Fields{
+				"begin": begin,
+				"wait":  next - time.Now().Unix(),
+			}).Info("CommitBlock wait to broadcast hacked block")
 			time.Sleep(time.Duration(next-time.Now().Unix()) * time.Second)
 
 			mlist := n.hackedBlockList[begin]
-			log.Printf("CommitBlock time to broadcast hacked block, begin %d, len(list) = %d, len(mlist) = %d\n",
-				begin, len(list), len(mlist))
 			for _, b := range mlist {
-				log.Printf("time to release hacked block %d, by proposer %s\n", b.Height, b.Proposer.Proposer)
+				log.WithFields(log.Fields{
+					"hacked-block": b.Height,
+					"proposer":     b.Proposer.Proposer,
+				}).Info("CommitBlock time to release hacked block")
 				n.BroadcastBlock(b)
 			}
-			log.Printf("CommitBlock broadcast hacked block finished, begin %d\n", begin)
+			log.WithField("begin", begin).Info("CommitBlock broadcast hacked block finished")
 		}(begin, newList)
 	}
 }
@@ -136,10 +145,10 @@ func (n *Node) RunServer() {
 	// register service into grpc server
 	pb.RegisterCenterServiceServer(n.apiServer, newCenterServiceServer(n))
 
-	log.Println("server start at ", n.conf.Url)
+	log.WithField("url", n.conf.Url).Info("server start")
 
 	if err := n.apiServer.Serve(lis); err != nil {
-		log.Printf("grpc serve err: %v", err)
+		log.WithError(err).Error("grpc serve error")
 	}
 }
 
