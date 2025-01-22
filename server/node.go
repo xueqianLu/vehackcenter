@@ -68,52 +68,24 @@ func (n *Node) CommitBlock(block *pb.Block) {
 
 		// add to hack block list, and when the time is up, broadcast the block.
 		blockTime := int64(block.Timestamp)
-		begin := blockTime - T*int64(block.Proposer.Index)
+		next := blockTime + T
+		end := next - 3
+
 		log.WithFields(log.Fields{
-			"begin":    begin,
-			"block":    block.Height,
-			"proposer": block.Proposer.Proposer,
-			"index":    block.Proposer.Index,
+			"block":             block.Height,
+			"proposer":          block.Proposer.Proposer,
+			"index":             block.Proposer.Index,
+			"wait to broadcast": end - time.Now().Unix(),
 		}).Info("CommitBlock receive")
 
-		var newList []*pb.Block = nil
-		n.mux.Lock()
-		if _, exist := n.hackedBlockList[begin]; !exist {
-			n.hackedBlockList[begin] = make([]*pb.Block, 0)
-			newList = n.hackedBlockList[begin]
-		}
-		n.hackedBlockList[begin] = append(n.hackedBlockList[begin], block)
-		n.mux.Unlock()
-		log.WithField("pending", len(n.hackedBlockList[begin])).Info("CommitBlock pendin block count")
-
-		go func(begin int64, list []*pb.Block) {
-			/*
-			 * begin = t - T * index
-			 * end = begin + (2n - 1) * T
-			 */
-			if list == nil {
-				return
-			}
-
-			end := begin + (2*int64(n.conf.HackerCount)-1)*T
-			targetBlockTime := end
-			next := targetBlockTime // 出块者会提前5秒开始出块，在这里提前5秒广播
+		go func(duration int64, blk *pb.Block) {
+			time.Sleep(time.Duration(duration) * time.Second)
 			log.WithFields(log.Fields{
-				"begin": begin,
-				"wait":  next - time.Now().Unix(),
-			}).Info("CommitBlock wait to broadcast hacked block")
-			time.Sleep(time.Duration(next-time.Now().Unix()) * time.Second)
-
-			mlist := n.hackedBlockList[begin]
-			for _, b := range mlist {
-				log.WithFields(log.Fields{
-					"hacked-block": b.Height,
-					"proposer":     b.Proposer.Proposer,
-				}).Info("CommitBlock time to release hacked block")
-				n.BroadcastBlock(b)
-			}
-			log.WithField("begin", begin).Info("CommitBlock broadcast hacked block finished")
-		}(begin, newList)
+				"hacked-block": blk.Height,
+				"proposer":     blk.Proposer.Proposer,
+			}).Info("CommitBlock time to release hacked block")
+			n.BroadcastBlock(blk)
+		}(end-time.Now().Unix(), block)
 	}
 }
 
