@@ -111,7 +111,7 @@ func (s *centerService) SubscribeMinedBlock(in *pb.SubscribeBlockRequest, stream
 }
 
 func (s *centerService) BroadcastBlock(ctx context.Context, block *pb.Block) (*pb.SubmitBlockResponse, error) {
-	s.node.BroadcastBlock(block)
+	s.node.BroadcastBlock(block, false)
 	return &pb.SubmitBlockResponse{
 		Hash: block.Hash,
 	}, nil

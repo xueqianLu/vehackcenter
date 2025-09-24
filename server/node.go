@@ -12,12 +12,14 @@ import (
 )
 
 type Node struct {
-	broadcastTaskFeed event.Feed
-	minedBlockFeed    event.Feed
-	newBlockFeed      event.Feed
-	scope             event.SubscriptionScope
-	apiServer         *grpc.Server
-	hackedBlockList   map[int64][]*pb.Block
+	broadcastTaskFeed    event.Feed
+	minedBlockFeed       event.Feed
+	newBlockFeed         event.Feed
+	newExternalBlockFeed event.Feed
+	scope                event.SubscriptionScope
+	apiServer            *grpc.Server
+	hackedBlockList      map[int64][]*pb.Block
+	pendingBlockChan     chan *pb.Block
 
 	mux       sync.Mutex
 	registers map[string]string
@@ -27,9 +29,10 @@ type Node struct {
 
 func NewNode(conf config.Config) *Node {
 	n := &Node{
-		conf:            conf,
-		registers:       make(map[string]string),
-		hackedBlockList: make(map[int64][]*pb.Block),
+		conf:             conf,
+		registers:        make(map[string]string),
+		hackedBlockList:  make(map[int64][]*pb.Block),
+		pendingBlockChan: make(chan *pb.Block, 100),
 	}
 	maxMsgSize := 100 * 1024 * 1024
 	// create grpc server
@@ -56,42 +59,75 @@ func (n *Node) GetAllRegisters(filter func(node string) bool) []string {
 	return registers
 }
 
-func (n *Node) CommitBlock(block *pb.Block) {
+func (n *Node) broadCastPending() {
+	externalBlockCh := make(chan NewBlockEvent, 100)
+	sub := n.SubscribeNewExternalBlock(externalBlockCh)
+	defer sub.Unsubscribe()
 
-	T := int64(10)
-	if block.Height < int64(n.conf.BeginToHack) || block.Height > int64(n.conf.EndToHack) {
-		// direct broadcast to all nodes.
-		n.BroadcastBlock(block)
-	} else {
-		// 1. send block to all subscribed hackers.
-		n.minedBlockFeed.Send(NewMinedBlockEvent{Block: block})
+	var realBroadcast = func(duration int64, blks []*pb.Block) {
+		time.Sleep(time.Duration(duration) * time.Second)
+		for _, blk := range blks {
+			n.BroadcastBlock(blk, true)
+		}
+	}
 
-		// add to hack block list, and when the time is up, broadcast the block.
-		blockTime := int64(block.Timestamp)
-		next := blockTime + T
-		end := next - 3
+	var newBlock *pb.Block
+	T := 10
+	var latestPending *pb.Block
 
-		log.WithFields(log.Fields{
-			"block":             block.Height,
-			"proposer":          block.Proposer.Proposer,
-			"index":             block.Proposer.Index,
-			"wait to broadcast": end - time.Now().Unix(),
-		}).Info("CommitBlock receive")
+	var toBroadcast []*pb.Block
+	for {
+		select {
+		case ev := <-externalBlockCh:
+			// got a new honest block, clear pending list and broadcast all pending blocks.
+			newBlock = ev.Block
+			if latestPending == nil || newBlock.Height <= latestPending.Height {
+				continue
+			}
+			pendLength := len(toBroadcast)
+			if pendLength > 0 {
+				// calculate the duration to broadcast pending blocks.
+				targetTime := newBlock.Timestamp + int64(pendLength*T)
+				end := targetTime - 6 // before 6 seconds of the target block.
+				duration := end - time.Now().Unix()
+				if duration < 0 {
+					duration = 0
+				}
+				go realBroadcast(duration, toBroadcast)
+				toBroadcast = make([]*pb.Block, 0)
+				latestPending = nil
+			}
 
-		go func(duration int64, blk *pb.Block) {
-			time.Sleep(time.Duration(duration) * time.Second)
-			log.WithFields(log.Fields{
-				"hacked-block": blk.Height,
-				"proposer":     blk.Proposer.Proposer,
-			}).Info("CommitBlock time to release hacked block")
-			n.BroadcastBlock(blk)
-		}(end-time.Now().Unix(), block)
+		case newPending := <-n.pendingBlockChan:
+			toBroadcast = append(toBroadcast, newPending)
+			latestPending = newPending
+
+		}
+
 	}
 }
 
-func (n *Node) BroadcastBlock(block *pb.Block) {
+func (n *Node) CommitBlock(block *pb.Block) {
+	if block.Height < int64(n.conf.BeginToHack) || block.Height > int64(n.conf.EndToHack) {
+		// direct broadcast to all nodes.
+		n.BroadcastBlock(block, true)
+	} else {
+		// add to pending list.
+		n.pendingBlockChan <- block
+	}
+}
+
+func (n *Node) BroadcastBlock(block *pb.Block, internal bool) {
 	// 1. send block to all subscribed node.
 	n.newBlockFeed.Send(NewBlockEvent{Block: block})
+	if !internal {
+		// 2. send block to all subscribed external node.
+		n.newExternalBlockFeed.Send(NewBlockEvent{Block: block})
+	}
+}
+
+func (n *Node) SubscribeNewExternalBlock(ch chan<- NewBlockEvent) event.Subscription {
+	return n.scope.Track(n.newExternalBlockFeed.Subscribe(ch))
 }
 
 func (n *Node) SubscribeNewMinedBlock(ch chan<- NewMinedBlockEvent) event.Subscription {
