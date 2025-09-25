@@ -21,6 +21,8 @@ type Node struct {
 	hackedBlockList      map[int64][]*pb.Block
 	pendingBlockChan     chan *pb.Block
 
+	quit chan struct{}
+
 	mux       sync.Mutex
 	registers map[string]string
 
@@ -33,6 +35,7 @@ func NewNode(conf config.Config) *Node {
 		registers:        make(map[string]string),
 		hackedBlockList:  make(map[int64][]*pb.Block),
 		pendingBlockChan: make(chan *pb.Block, 100),
+		quit:             make(chan struct{}),
 	}
 	maxMsgSize := 100 * 1024 * 1024
 	// create grpc server
@@ -73,15 +76,17 @@ func (n *Node) broadCastPending() {
 
 	var newBlock *pb.Block
 	T := 10
-	var latestPending *pb.Block
+	var firstPending *pb.Block
 
 	var toBroadcast []*pb.Block
 	for {
 		select {
+		case <-n.quit:
+			return
 		case ev := <-externalBlockCh:
 			// got a new honest block, clear pending list and broadcast all pending blocks.
 			newBlock = ev.Block
-			if latestPending == nil || newBlock.Height <= latestPending.Height {
+			if firstPending == nil || newBlock.Height < firstPending.Height {
 				continue
 			}
 			pendLength := len(toBroadcast)
@@ -95,13 +100,13 @@ func (n *Node) broadCastPending() {
 				}
 				go realBroadcast(duration, toBroadcast)
 				toBroadcast = make([]*pb.Block, 0)
-				latestPending = nil
 			}
 
 		case newPending := <-n.pendingBlockChan:
+			if len(toBroadcast) == 0 {
+				firstPending = newPending
+			}
 			toBroadcast = append(toBroadcast, newPending)
-			latestPending = newPending
-
 		}
 
 	}
@@ -143,6 +148,7 @@ func (n *Node) SubscribeBroadcastTask(ch chan<- BroadcastEvent) event.Subscripti
 }
 
 func (n *Node) RunServer() {
+
 	// listen port
 	lis, err := net.Listen("tcp", n.conf.Url)
 	if err != nil {
@@ -155,6 +161,8 @@ func (n *Node) RunServer() {
 
 	log.WithField("url", n.conf.Url).Info("server start")
 
+	go n.broadCastPending()
+
 	if err := n.apiServer.Serve(lis); err != nil {
 		log.WithError(err).Error("grpc serve error")
 	}
@@ -162,6 +170,7 @@ func (n *Node) RunServer() {
 
 func (n *Node) StopServer() {
 	n.apiServer.Stop()
+	close(n.quit)
 }
 
 func (n *Node) UpdateHack(begin int, end int) {
