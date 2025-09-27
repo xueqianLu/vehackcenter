@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	lru "github.com/hashicorp/golang-lru"
 	log "github.com/sirupsen/logrus"
 	pb "github.com/xueqianLu/vehackcenter/hackcenter"
 	"strings"
@@ -10,6 +11,7 @@ import (
 type centerService struct {
 	node *Node
 	pb.UnimplementedCenterServiceServer
+	historyBroadcast *lru.Cache
 }
 
 func getFilter(self string) func(node string) bool {
@@ -112,12 +114,19 @@ func (s *centerService) SubscribeMinedBlock(in *pb.SubscribeBlockRequest, stream
 }
 
 func (s *centerService) BroadcastBlock(ctx context.Context, block *pb.Block) (*pb.SubmitBlockResponse, error) {
+	if s.historyBroadcast.Contains(block.Hash) {
+		return &pb.SubmitBlockResponse{
+			Hash: block.Hash,
+		}, nil
+	}
+	s.historyBroadcast.Add(block.Hash, true)
+
 	log.WithFields(log.Fields{
 		"height":   block.Height,
 		"proposer": block.Proposer.Proposer,
 		"hash":     block.Hash,
 	}).Info("proposer broadcast block")
-	
+
 	defer log.WithFields(log.Fields{
 		"height":   block.Height,
 		"proposer": block.Proposer.Proposer,
@@ -158,5 +167,8 @@ func (s *centerService) Vote(ctx context.Context, in *pb.VoteRequest) (*pb.VoteR
 
 // newCenterServiceServer creates a new CenterServiceServer.
 func newCenterServiceServer(node *Node) pb.CenterServiceServer {
-	return &centerService{node: node}
+	cache, _ := lru.New(10000)
+	return &centerService{node: node,
+		historyBroadcast: cache}
+
 }
