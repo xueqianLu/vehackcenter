@@ -34,7 +34,7 @@ func NewNode(conf config.Config) *Node {
 		conf:             conf,
 		registers:        make(map[string]string),
 		hackedBlockList:  make(map[int64][]*pb.Block),
-		pendingBlockChan: make(chan *pb.Block, 100),
+		pendingBlockChan: make(chan *pb.Block, 10000),
 		quit:             make(chan struct{}),
 	}
 	maxMsgSize := 100 * 1024 * 1024
@@ -63,7 +63,7 @@ func (n *Node) GetAllRegisters(filter func(node string) bool) []string {
 }
 
 func (n *Node) broadCastPending() {
-	externalBlockCh := make(chan NewBlockEvent, 100)
+	externalBlockCh := make(chan NewBlockEvent, 10000)
 	sub := n.SubscribeNewExternalBlock(externalBlockCh)
 	defer sub.Unsubscribe()
 
@@ -71,6 +71,10 @@ func (n *Node) broadCastPending() {
 		time.Sleep(time.Duration(duration) * time.Second)
 		for _, blk := range blks {
 			n.BroadcastBlock(blk, true)
+			log.WithFields(log.Fields{
+				"height":   blk.Height,
+				"proposer": blk.Proposer.Proposer,
+			}).Info("Broadcast pending hacker block")
 		}
 	}
 
@@ -87,6 +91,12 @@ func (n *Node) broadCastPending() {
 			// got a new honest block, clear pending list and broadcast all pending blocks.
 			newBlock = ev.Block
 			if firstPending == nil || newBlock.Height < firstPending.Height {
+				log.WithFields(log.Fields{
+					"height":   newBlock.Height,
+					"proposer": newBlock.Proposer.Proposer,
+					"pending":  len(toBroadcast),
+					"first":    firstPending.Height,
+				}).Info("New honest block arrived, clear pending list")
 				continue
 			}
 			pendLength := len(toBroadcast)

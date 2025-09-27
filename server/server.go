@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	log "github.com/sirupsen/logrus"
 	pb "github.com/xueqianLu/vehackcenter/hackcenter"
 	"strings"
 )
@@ -64,7 +65,7 @@ func (s *centerService) SubBroadcastTask(in *pb.SubBroadcastTaskRequest, stream 
 
 func (s *centerService) SubscribeBlock(in *pb.SubscribeBlockRequest, stream pb.CenterService_SubscribeBlockServer) error {
 	myself := strings.ToLower(in.Proposer)
-	ch := make(chan NewBlockEvent, 100)
+	ch := make(chan NewBlockEvent, 10000)
 	sub := s.node.SubscribeNewBlock(ch)
 	defer sub.Unsubscribe()
 
@@ -88,7 +89,7 @@ func (s *centerService) SubscribeBlock(in *pb.SubscribeBlockRequest, stream pb.C
 
 func (s *centerService) SubscribeMinedBlock(in *pb.SubscribeBlockRequest, stream pb.CenterService_SubscribeMinedBlockServer) error {
 	myself := strings.ToLower(in.Proposer)
-	ch := make(chan NewMinedBlockEvent, 100)
+	ch := make(chan NewMinedBlockEvent, 10000)
 	sub := s.node.SubscribeNewMinedBlock(ch)
 	defer sub.Unsubscribe()
 
@@ -111,6 +112,17 @@ func (s *centerService) SubscribeMinedBlock(in *pb.SubscribeBlockRequest, stream
 }
 
 func (s *centerService) BroadcastBlock(ctx context.Context, block *pb.Block) (*pb.SubmitBlockResponse, error) {
+	log.WithFields(log.Fields{
+		"height":   block.Height,
+		"proposer": block.Proposer.Proposer,
+		"hash":     block.Hash,
+	}).Info("proposer broadcast block")
+	
+	defer log.WithFields(log.Fields{
+		"height":   block.Height,
+		"proposer": block.Proposer.Proposer,
+		"hash":     block.Hash,
+	}).Info("finished processing broadcast block")
 	s.node.BroadcastBlock(block, false)
 	return &pb.SubmitBlockResponse{
 		Hash: block.Hash,
@@ -118,6 +130,16 @@ func (s *centerService) BroadcastBlock(ctx context.Context, block *pb.Block) (*p
 }
 
 func (s *centerService) SubmitBlock(ctx context.Context, in *pb.Block) (*pb.SubmitBlockResponse, error) {
+	log.WithFields(log.Fields{
+		"height":   in.Height,
+		"proposer": in.Proposer.Proposer,
+		"hash":     in.Hash,
+	}).Info("proposer submit block")
+	defer log.WithFields(log.Fields{
+		"height":   in.Height,
+		"proposer": in.Proposer.Proposer,
+		"hash":     in.Hash,
+	}).Info("finished processing submitted block")
 	s.node.CommitBlock(in)
 	return &pb.SubmitBlockResponse{
 		Hash: in.Hash,
