@@ -143,6 +143,8 @@ func (n *Node) CommitBlock(block *pb.Block) {
 		// direct broadcast to all nodes.
 		n.BroadcastBlock(block, true)
 	} else {
+		// 1. send block to all subscribed hackers.
+		n.minedBlockFeed.Send(NewMinedBlockEvent{Block: block})
 		// add to pending list.
 		n.pendingBlockChan <- block
 	}
