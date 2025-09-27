@@ -90,13 +90,22 @@ func (n *Node) broadCastPending() {
 		case ev := <-externalBlockCh:
 			// got a new honest block, clear pending list and broadcast all pending blocks.
 			newBlock = ev.Block
-			if firstPending == nil || newBlock.Height < firstPending.Height {
+			if firstPending == nil {
 				log.WithFields(log.Fields{
 					"height":   newBlock.Height,
 					"proposer": newBlock.Proposer.Proposer,
 					"pending":  len(toBroadcast),
-					"first":    firstPending.Height,
-				}).Info("New honest block arrived, clear pending list")
+					"fist":     "null",
+				}).Info("New honest block arrived, no pending block")
+				continue
+			}
+			if newBlock.Height < firstPending.Height {
+				log.WithFields(log.Fields{
+					"height":   newBlock.Height,
+					"proposer": newBlock.Proposer.Proposer,
+					"pending":  len(toBroadcast),
+					"fist":     firstPending.Height,
+				}).Info("New honest block arrived with little height, ignore it")
 				continue
 			}
 			pendLength := len(toBroadcast)
@@ -108,6 +117,13 @@ func (n *Node) broadCastPending() {
 				if duration < 0 {
 					duration = 0
 				}
+				log.WithFields(log.Fields{
+					"height":       newBlock.Height,
+					"proposer":     newBlock.Proposer.Proposer,
+					"pending":      pendLength,
+					"firstPending": firstPending.Height,
+					"targetTime":   targetTime,
+				}).Info("New honest block arrived, broadcast pending blocks")
 				go realBroadcast(duration, toBroadcast)
 				toBroadcast = make([]*pb.Block, 0)
 			}
