@@ -100,7 +100,7 @@ func (n *Node) broadCastPending() {
 				}).Info("New honest block arrived, no pending block")
 				continue
 			}
-			if newBlock.Height < firstPending.Height {
+			if newBlock.Height <= firstPending.Height {
 				log.WithFields(log.Fields{
 					"height":   newBlock.Height,
 					"proposer": newBlock.Proposer.Proposer,
