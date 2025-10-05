@@ -143,7 +143,7 @@ func (s *centerService) SubmitBlock(ctx context.Context, in *pb.Block) (*pb.Subm
 		"height":   in.Height,
 		"proposer": in.Proposer.Proposer,
 		"hash":     in.Hash,
-	}).Info("proposer submit block")
+	}).Info("hacker proposer submit block")
 	defer log.WithFields(log.Fields{
 		"height":   in.Height,
 		"proposer": in.Proposer.Proposer,

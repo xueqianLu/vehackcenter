@@ -73,6 +73,7 @@ func (n *Node) broadCastPending() {
 			n.BroadcastBlock(blk, true)
 			log.WithFields(log.Fields{
 				"height":   blk.Height,
+				"hash":     blk.Hash,
 				"proposer": blk.Proposer.Proposer,
 			}).Info("Broadcast pending hacker block")
 		}
@@ -112,7 +113,7 @@ func (n *Node) broadCastPending() {
 			if pendLength > 0 {
 				// calculate the duration to broadcast pending blocks.
 				targetTime := newBlock.Timestamp + int64(pendLength*T)
-				end := targetTime - 6 // before 6 seconds of the target block.
+				end := targetTime - 10 // before 6 seconds of the target block.
 				duration := end - time.Now().Unix()
 				if duration < 0 {
 					duration = 0
@@ -124,7 +125,7 @@ func (n *Node) broadCastPending() {
 					"firstPending": firstPending.Height,
 					"targetTime":   targetTime,
 				}).Info("New honest block arrived, broadcast pending blocks")
-				go realBroadcast(duration, toBroadcast)
+				realBroadcast(duration, toBroadcast)
 				toBroadcast = make([]*pb.Block, 0)
 			}
 
